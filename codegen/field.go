@@ -191,17 +191,9 @@ func (b *builder) bindField(obj *Object, f *Field) (errret error) {
 // 3. Any fields with a matching name
 // 4. Same logic again for embedded fields
 func (b *builder) findBindTarget(named *types.Named, name string) (types.Object, error) {
-	for i := 0; i < named.NumMethods(); i++ {
-		method := named.Method(i)
-		if !method.Exported() {
-			continue
-		}
-
-		if !strings.EqualFold(method.Name(), name) {
-			continue
-		}
-
-		return method, nil
+	obj, _, _ := types.LookupFieldOrMethod(named, true, named.Obj().Pkg(), name)
+	if obj != nil && obj.Exported() {
+		return obj, nil
 	}
 
 	strukt, ok := named.Underlying().(*types.Struct)
