@@ -143,6 +143,9 @@ func (r *queryResolver) Autobind(ctx context.Context) (*Autobind, error) {
 func (r *queryResolver) DeprecatedField(ctx context.Context) (string, error) {
 	panic("not implemented")
 }
+func (r *queryResolver) EmbeddedPointer(ctx context.Context) (*EmbeddedPointerModel, error) {
+	panic("not implemented")
+}
 func (r *queryResolver) Overlapping(ctx context.Context) (*OverlappingFields, error) {
 	panic("not implemented")
 }

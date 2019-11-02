@@ -79,3 +79,59 @@ func TestUnionFragments(t *testing.T) {
 		require.NotEmpty(t, resp.ShapeUnion.Radius)
 	})
 }
+
+func TestEmbeddedMethodResponse(t *testing.T) {
+	resolvers := &Stub{}
+
+	resolvers.QueryResolver.EmbeddedPointer = func(context.Context) (*EmbeddedPointerModel, error) {
+		return &EmbeddedPointerModel{}, nil
+	}
+
+	c := client.New(handler.GraphQL(NewExecutableSchema(Config{Resolvers: resolvers})))
+
+	t.Run("request embedded method", func(t *testing.T) {
+		var resp struct {
+			EmbeddedPointer struct {
+				UnexportedEmbeddedPointerMethod string
+			}
+		}
+		c.MustPost(`query {
+			embeddedPointer {
+				unexportedEmbeddedPointerMethod
+			}
+		}
+		`, &resp)
+		require.Equal(t, resp.EmbeddedPointer.UnexportedEmbeddedPointerMethod, "UnexportedEmbeddedPointerMethodResponse")
+	})
+}
+
+type fakeEmbededInterface struct{}
+
+func (*fakeEmbededInterface) EmbeddedInterfaceMethod() string {
+	return "EmbeddedInterfaceMethodResponse"
+}
+
+func TestEmbeddedInterfaceMethodResponse(t *testing.T) {
+	resolvers := &Stub{}
+
+	resolvers.QueryResolver.EmbeddedPointer = func(context.Context) (*EmbeddedPointerModel, error) {
+		return &EmbeddedPointerModel{embeddedInterface: &fakeEmbededInterface{}}, nil
+	}
+
+	c := client.New(handler.GraphQL(NewExecutableSchema(Config{Resolvers: resolvers})))
+
+	t.Run("request embedded method", func(t *testing.T) {
+		var resp struct {
+			EmbeddedPointer struct {
+				EmbeddedInterfaceMethod string
+			}
+		}
+		c.MustPost(`query {
+			embeddedPointer {
+				embeddedInterfaceMethod
+			}
+		}
+		`, &resp)
+		require.Equal(t, resp.EmbeddedPointer.EmbeddedInterfaceMethod, "EmbeddedInterfaceMethodResponse")
+	})
+}

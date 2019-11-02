@@ -15,6 +15,7 @@ type Query {
     shapeUnion: ShapeUnion!
     autobind: Autobind
     deprecatedField: String! @deprecated(reason: "test deprecated directive")
+    embeddedPointer: EmbeddedPointer!
 }
 
 type Subscription {
@@ -86,6 +87,8 @@ type ForcedResolver {
 type EmbeddedPointer @goModel(model:"testserver.EmbeddedPointerModel") {
     ID: String
     Title: String
+    unexportedEmbeddedPointerMethod: String!
+    embeddedInterfaceMethod: String!
 }
 
 scalar UUID

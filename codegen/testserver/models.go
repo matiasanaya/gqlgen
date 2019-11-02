@@ -41,7 +41,19 @@ func (Error) NilOnRequiredField() *string {
 
 type EmbeddedPointerModel struct {
 	*EmbeddedPointer
+	*unexportedEmbeddedPointer
+	embeddedInterface
 	ID string
+}
+
+type unexportedEmbeddedPointer struct{}
+
+func (*unexportedEmbeddedPointer) UnexportedEmbeddedPointerMethod() string {
+	return "UnexportedEmbeddedPointerMethodResponse"
+}
+
+type embeddedInterface interface {
+	EmbeddedInterfaceMethod() string
 }
 
 type EmbeddedPointer struct {

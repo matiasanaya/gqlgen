@@ -114,8 +114,10 @@ type ComplexityRoot struct {
 	}
 
 	EmbeddedPointer struct {
-		ID    func(childComplexity int) int
-		Title func(childComplexity int) int
+		EmbeddedInterfaceMethod         func(childComplexity int) int
+		ID                              func(childComplexity int) int
+		Title                           func(childComplexity int) int
+		UnexportedEmbeddedPointerMethod func(childComplexity int) int
 	}
 
 	Error struct {
@@ -224,6 +226,7 @@ type ComplexityRoot struct {
 		DirectiveObject                  func(childComplexity int) int
 		DirectiveObjectWithCustomGoModel func(childComplexity int) int
 		DirectiveUnimplemented           func(childComplexity int) int
+		EmbeddedPointer                  func(childComplexity int) int
 		ErrorBubble                      func(childComplexity int) int
 		Errors                           func(childComplexity int) int
 		Fallback                         func(childComplexity int, arg FallbackToStringEncoding) int
@@ -354,6 +357,7 @@ type QueryResolver interface {
 	ShapeUnion(ctx context.Context) (ShapeUnion, error)
 	Autobind(ctx context.Context) (*Autobind, error)
 	DeprecatedField(ctx context.Context) (string, error)
+	EmbeddedPointer(ctx context.Context) (*EmbeddedPointerModel, error)
 	Overlapping(ctx context.Context) (*OverlappingFields, error)
 	DirectiveArg(ctx context.Context, arg string) (*string, error)
 	DirectiveNullableArg(ctx context.Context, arg *int, arg2 *int, arg3 *string) (*string, error)
@@ -510,6 +514,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.EmbeddedDefaultScalar.Value(childComplexity), true
 
+	case "EmbeddedPointer.embeddedInterfaceMethod":
+		if e.complexity.EmbeddedPointer.EmbeddedInterfaceMethod == nil {
+			break
+		}
+
+		return e.complexity.EmbeddedPointer.EmbeddedInterfaceMethod(childComplexity), true
+
 	case "EmbeddedPointer.ID":
 		if e.complexity.EmbeddedPointer.ID == nil {
 			break
@@ -523,6 +534,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.EmbeddedPointer.Title(childComplexity), true
+
+	case "EmbeddedPointer.unexportedEmbeddedPointerMethod":
+		if e.complexity.EmbeddedPointer.UnexportedEmbeddedPointerMethod == nil {
+			break
+		}
+
+		return e.complexity.EmbeddedPointer.UnexportedEmbeddedPointerMethod(childComplexity), true
 
 	case "Error.errorOnNonRequiredField":
 		if e.complexity.Error.ErrorOnNonRequiredField == nil {
@@ -925,6 +943,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.DirectiveUnimplemented(childComplexity), true
+
+	case "Query.embeddedPointer":
+		if e.complexity.Query.EmbeddedPointer == nil {
+			break
+		}
+
+		return e.complexity.Query.EmbeddedPointer(childComplexity), true
 
 	case "Query.errorBubble":
 		if e.complexity.Query.ErrorBubble == nil {
@@ -1645,6 +1670,7 @@ type Query {
     shapeUnion: ShapeUnion!
     autobind: Autobind
     deprecatedField: String! @deprecated(reason: "test deprecated directive")
+    embeddedPointer: EmbeddedPointer!
 }
 
 type Subscription {
@@ -1716,6 +1742,8 @@ type ForcedResolver {
 type EmbeddedPointer @goModel(model:"testserver.EmbeddedPointerModel") {
     ID: String
     Title: String
+    unexportedEmbeddedPointerMethod: String!
+    embeddedInterfaceMethod: String!
 }
 
 scalar UUID
@@ -3245,6 +3273,74 @@ func (ec *executionContext) _EmbeddedPointer_Title(ctx context.Context, field gr
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return ec.marshalOString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EmbeddedPointer_unexportedEmbeddedPointerMethod(ctx context.Context, field graphql.CollectedField, obj *EmbeddedPointerModel) (ret graphql.Marshaler) {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+		ec.Tracer.EndFieldExecution(ctx)
+	}()
+	rctx := &graphql.ResolverContext{
+		Object:   "EmbeddedPointer",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp := ec._fieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UnexportedEmbeddedPointerMethod(), nil
+	})
+
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _EmbeddedPointer_embeddedInterfaceMethod(ctx context.Context, field graphql.CollectedField, obj *EmbeddedPointerModel) (ret graphql.Marshaler) {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+		ec.Tracer.EndFieldExecution(ctx)
+	}()
+	rctx := &graphql.ResolverContext{
+		Object:   "EmbeddedPointer",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp := ec._fieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EmbeddedInterfaceMethod(), nil
+	})
+
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Error_id(ctx context.Context, field graphql.CollectedField, obj *Error) (ret graphql.Marshaler) {
@@ -5080,6 +5176,40 @@ func (ec *executionContext) _Query_deprecatedField(ctx context.Context, field gr
 	rctx.Result = res
 	ctx = ec.Tracer.StartFieldChildExecution(ctx)
 	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_embeddedPointer(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	ctx = ec.Tracer.StartFieldExecution(ctx, field)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+		ec.Tracer.EndFieldExecution(ctx)
+	}()
+	rctx := &graphql.ResolverContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+	ctx = graphql.WithResolverContext(ctx, rctx)
+	ctx = ec.Tracer.StartFieldResolverExecution(ctx, rctx)
+	resTmp := ec._fieldMiddleware(ctx, nil, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().EmbeddedPointer(rctx)
+	})
+
+	if resTmp == nil {
+		if !ec.HasError(rctx) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*EmbeddedPointerModel)
+	rctx.Result = res
+	ctx = ec.Tracer.StartFieldChildExecution(ctx)
+	return ec.marshalNEmbeddedPointer2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐEmbeddedPointerModel(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_overlapping(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -9031,6 +9161,16 @@ func (ec *executionContext) _EmbeddedPointer(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._EmbeddedPointer_ID(ctx, field, obj)
 		case "Title":
 			out.Values[i] = ec._EmbeddedPointer_Title(ctx, field, obj)
+		case "unexportedEmbeddedPointerMethod":
+			out.Values[i] = ec._EmbeddedPointer_unexportedEmbeddedPointerMethod(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "embeddedInterfaceMethod":
+			out.Values[i] = ec._EmbeddedPointer_embeddedInterfaceMethod(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9910,6 +10050,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_deprecatedField(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "embeddedPointer":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_embeddedPointer(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}
@@ -10891,6 +11045,20 @@ func (ec *executionContext) marshalNDefaultScalarImplementation2string(ctx conte
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNEmbeddedPointer2githubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐEmbeddedPointerModel(ctx context.Context, sel ast.SelectionSet, v EmbeddedPointerModel) graphql.Marshaler {
+	return ec._EmbeddedPointer(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNEmbeddedPointer2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐEmbeddedPointerModel(ctx context.Context, sel ast.SelectionSet, v *EmbeddedPointerModel) graphql.Marshaler {
+	if v == nil {
+		if !ec.HasError(graphql.GetResolverContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._EmbeddedPointer(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNError2githubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐError(ctx context.Context, sel ast.SelectionSet, v Error) graphql.Marshaler {
