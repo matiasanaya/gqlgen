@@ -22,6 +22,10 @@ type Subscription {
     initPayload: String!
 }
 
+type Mutation {
+    arrayIsNull(array: [Boolean!]): Boolean!
+}
+
 type User {
     id: Int!
     friends: [User!]! @goField(forceResolver: true)

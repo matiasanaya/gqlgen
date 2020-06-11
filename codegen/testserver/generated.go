@@ -43,6 +43,7 @@ type ResolverRoot interface {
 	Errors() ErrorsResolver
 	ForcedResolver() ForcedResolverResolver
 	ModelMethods() ModelMethodsResolver
+	Mutation() MutationResolver
 	OverlappingFields() OverlappingFieldsResolver
 	Panics() PanicsResolver
 	Primitive() PrimitiveResolver
@@ -210,6 +211,10 @@ type ComplexityRoot struct {
 		WithContext   func(childComplexity int) int
 	}
 
+	Mutation struct {
+		ArrayIsNull func(childComplexity int, array []bool) int
+	}
+
 	ObjectDirectives struct {
 		NullableText func(childComplexity int) int
 		Order        func(childComplexity int) int
@@ -375,6 +380,9 @@ type ForcedResolverResolver interface {
 }
 type ModelMethodsResolver interface {
 	ResolverField(ctx context.Context, obj *ModelMethods) (bool, error)
+}
+type MutationResolver interface {
+	ArrayIsNull(ctx context.Context, array []bool) (bool, error)
 }
 type OverlappingFieldsResolver interface {
 	OldFoo(ctx context.Context, obj *OverlappingFields) (int, error)
@@ -844,6 +852,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ModelMethods.WithContext(childComplexity), true
+
+	case "Mutation.arrayIsNull":
+		if e.complexity.Mutation.ArrayIsNull == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_arrayIsNull_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ArrayIsNull(childComplexity, args["array"].([]bool)), true
 
 	case "ObjectDirectives.nullableText":
 		if e.complexity.ObjectDirectives.NullableText == nil {
@@ -1649,6 +1669,20 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 				Data: buf.Bytes(),
 			}
 		}
+	case ast.Mutation:
+		return func(ctx context.Context) *graphql.Response {
+			if !first {
+				return nil
+			}
+			first = false
+			data := ec._Mutation(ctx, rc.Operation.SelectionSet)
+			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
 	case ast.Subscription:
 		next := ec._Subscription(ctx, rc.Operation.SelectionSet)
 
@@ -1991,6 +2025,10 @@ type Subscription {
     initPayload: String!
 }
 
+type Mutation {
+    arrayIsNull(array: [Boolean!]): Boolean!
+}
+
 type User {
     id: Int!
     friends: [User!]! @goField(forceResolver: true)
@@ -2286,6 +2324,20 @@ func (ec *executionContext) dir_range_args(ctx context.Context, rawArgs map[stri
 		}
 	}
 	args["max"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_arrayIsNull_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []bool
+	if tmp, ok := rawArgs["array"]; ok {
+		arg0, err = ec.unmarshalOBoolean2ᚕboolᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["array"] = arg0
 	return args, nil
 }
 
@@ -4704,6 +4756,44 @@ func (ec *executionContext) _ModelMethods_withContext(ctx context.Context, field
 	resTmp := ec._fieldMiddleware(ctx, obj, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
 		return obj.WithContext(ctx), nil
+	})
+
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_arrayIsNull(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Mutation",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_arrayIsNull_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp := ec._fieldMiddleware(ctx, nil, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ArrayIsNull(rctx, args["array"].([]bool))
 	})
 
 	if resTmp == nil {
@@ -10621,6 +10711,37 @@ func (ec *executionContext) _ModelMethods(ctx context.Context, sel ast.Selection
 	return out
 }
 
+var mutationImplementors = []string{"Mutation"}
+
+func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mutationImplementors)
+
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Mutation",
+	})
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Mutation")
+		case "arrayIsNull":
+			out.Values[i] = ec._Mutation_arrayIsNull(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var objectDirectivesImplementors = []string{"ObjectDirectives"}
 
 func (ec *executionContext) _ObjectDirectives(ctx context.Context, sel ast.SelectionSet, obj *ObjectDirectives) graphql.Marshaler {
@@ -12380,7 +12501,9 @@ func (ec *executionContext) marshalNMarshalPanic2githubᚗcomᚋ99designsᚋgqlg
 
 func (ec *executionContext) unmarshalNMarshalPanic2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐMarshalPanicᚄ(ctx context.Context, v interface{}) ([]MarshalPanic, error) {
 	var vSlice []interface{}
-	if v != nil {
+	if v == nil {
+		return nil, nil
+	} else {
 		if tmp1, ok := v.([]interface{}); ok {
 			vSlice = tmp1
 		} else {
@@ -12529,7 +12652,9 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 
 func (ec *executionContext) unmarshalNString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
 	var vSlice []interface{}
-	if v != nil {
+	if v == nil {
+		return nil, nil
+	} else {
 		if tmp1, ok := v.([]interface{}); ok {
 			vSlice = tmp1
 		} else {
@@ -12558,7 +12683,9 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 
 func (ec *executionContext) unmarshalNString2ᚕᚖstring(ctx context.Context, v interface{}) ([]*string, error) {
 	var vSlice []interface{}
-	if v != nil {
+	if v == nil {
+		return nil, nil
+	} else {
 		if tmp1, ok := v.([]interface{}); ok {
 			vSlice = tmp1
 		} else {
@@ -12768,7 +12895,9 @@ func (ec *executionContext) marshalN__DirectiveLocation2string(ctx context.Conte
 
 func (ec *executionContext) unmarshalN__DirectiveLocation2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
 	var vSlice []interface{}
-	if v != nil {
+	if v == nil {
+		return nil, nil
+	} else {
 		if tmp1, ok := v.([]interface{}); ok {
 			vSlice = tmp1
 		} else {
@@ -12968,6 +13097,40 @@ func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v interf
 
 func (ec *executionContext) marshalOBoolean2bool(ctx context.Context, sel ast.SelectionSet, v bool) graphql.Marshaler {
 	return graphql.MarshalBoolean(v)
+}
+
+func (ec *executionContext) unmarshalOBoolean2ᚕboolᚄ(ctx context.Context, v interface{}) ([]bool, error) {
+	var vSlice []interface{}
+	if v == nil {
+		return nil, nil
+	} else {
+		if tmp1, ok := v.([]interface{}); ok {
+			vSlice = tmp1
+		} else {
+			vSlice = []interface{}{v}
+		}
+	}
+	var err error
+	res := make([]bool, len(vSlice))
+	for i := range vSlice {
+		res[i], err = ec.unmarshalNBoolean2bool(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOBoolean2ᚕboolᚄ(ctx context.Context, sel ast.SelectionSet, v []bool) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNBoolean2bool(ctx, sel, v[i])
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOBoolean2ᚖbool(ctx context.Context, v interface{}) (*bool, error) {
@@ -13326,7 +13489,9 @@ func (ec *executionContext) unmarshalOOuterInput2githubᚗcomᚋ99designsᚋgqlg
 
 func (ec *executionContext) unmarshalOOuterInput2ᚕᚕᚖgithubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐOuterInput(ctx context.Context, v interface{}) ([][]*OuterInput, error) {
 	var vSlice []interface{}
-	if v != nil {
+	if v == nil {
+		return nil, nil
+	} else {
 		if tmp1, ok := v.([]interface{}); ok {
 			vSlice = tmp1
 		} else {
@@ -13346,7 +13511,9 @@ func (ec *executionContext) unmarshalOOuterInput2ᚕᚕᚖgithubᚗcomᚋ99desig
 
 func (ec *executionContext) unmarshalOOuterInput2ᚕᚖgithubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐOuterInput(ctx context.Context, v interface{}) ([]*OuterInput, error) {
 	var vSlice []interface{}
-	if v != nil {
+	if v == nil {
+		return nil, nil
+	} else {
 		if tmp1, ok := v.([]interface{}); ok {
 			vSlice = tmp1
 		} else {
@@ -13491,7 +13658,9 @@ func (ec *executionContext) unmarshalORecursiveInputSlice2githubᚗcomᚋ99desig
 
 func (ec *executionContext) unmarshalORecursiveInputSlice2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋcodegenᚋtestserverᚐRecursiveInputSliceᚄ(ctx context.Context, v interface{}) ([]RecursiveInputSlice, error) {
 	var vSlice []interface{}
-	if v != nil {
+	if v == nil {
+		return nil, nil
+	} else {
 		if tmp1, ok := v.([]interface{}); ok {
 			vSlice = tmp1
 		} else {
@@ -13585,7 +13754,9 @@ func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.S
 
 func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
 	var vSlice []interface{}
-	if v != nil {
+	if v == nil {
+		return nil, nil
+	} else {
 		if tmp1, ok := v.([]interface{}); ok {
 			vSlice = tmp1
 		} else {
@@ -13617,7 +13788,9 @@ func (ec *executionContext) marshalOString2ᚕstringᚄ(ctx context.Context, sel
 
 func (ec *executionContext) unmarshalOString2ᚕᚖstring(ctx context.Context, v interface{}) ([]*string, error) {
 	var vSlice []interface{}
-	if v != nil {
+	if v == nil {
+		return nil, nil
+	} else {
 		if tmp1, ok := v.([]interface{}); ok {
 			vSlice = tmp1
 		} else {

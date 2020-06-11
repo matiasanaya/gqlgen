@@ -90,7 +90,7 @@ func TestNullBubbling(t *testing.T) {
 		resolvers.ErrorsResolver.D = func(ctx context.Context, obj *Errors) (i *Error, e error) { return nil, nil }
 		resolvers.ErrorsResolver.E = func(ctx context.Context, obj *Errors) (i *Error, e error) { return nil, nil }
 
-		err := c.Post(`{ errors { 
+		err := c.Post(`{ errors {
 			a { id },
 			b { id },
 			c { id },
@@ -100,5 +100,38 @@ func TestNullBubbling(t *testing.T) {
 
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "must not be null")
+	})
+}
+
+func TestNilVsEmptySlice(t *testing.T) {
+	resolvers := &Stub{}
+	resolvers.MutationResolver.ArrayIsNull = func(ctx context.Context, array []bool) (bool, error) {
+		if array == nil {
+			return true, nil
+		}
+
+		return false, nil
+	}
+
+	c := client.New(handler.NewDefaultServer(NewExecutableSchema(Config{Resolvers: resolvers})))
+
+	t.Run("when array is null", func(t *testing.T) {
+		var resp struct {
+			ArrayIsNull bool
+		}
+		err := c.Post(`mutation { arrayIsNull }`, &resp)
+
+		require.NoError(t, err)
+		require.True(t, resp.ArrayIsNull)
+	})
+
+	t.Run("when array is empty", func(t *testing.T) {
+		var resp struct {
+			ArrayIsNull bool
+		}
+		err := c.Post(`mutation { arrayIsNull(array: []) }`, &resp)
+
+		require.NoError(t, err)
+		require.False(t, resp.ArrayIsNull)
 	})
 }

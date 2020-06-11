@@ -9,7 +9,9 @@
 				return &res, err
 			{{- else if $type.IsSlice }}
 				var vSlice []interface{}
-				if v != nil {
+				if v == nil {
+					return nil, nil
+				} else {
 					if tmp1, ok := v.([]interface{}); ok {
 						vSlice = tmp1
 					} else {
