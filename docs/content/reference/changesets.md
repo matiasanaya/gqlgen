@@ -9,11 +9,11 @@ Occasionally you need to distinguish presence from nil (undefined vs null). In g
 
 
 ```graphql
-type Query {
+type Mutation {
 	updateUser(id: ID!, changes: UserChanges!): User
 }
 
-type UserChanges {
+input UserChanges {
 	name: String
 	email: String
 }
